@@ -1,3 +1,9 @@
+owrx-connector (0.6.2) bullseye jammy; urgency=low
+
+  * Now restarting Soapy stream if it times out.
+
+ -- Marat Fayzullin <luarvique@gmail.com>  Fri, 23 Dec 2022 15:15:00 +0000
+
 owrx-connector (0.6.1) bullseye jammy; urgency=low
 
   * New build for csdr 0.18.1
