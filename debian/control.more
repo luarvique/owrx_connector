@@ -1,0 +1,48 @@
+Source: owrx-connector
+Maintainer: Marat Fayzullin <luarvique@gmail.com>
+Section: hamradio
+Priority: optional
+Standards-Version: 4.2.0
+Build-Depends: debhelper (>= 11), cmake (>= 3), pkg-config, librtlsdr-dev, libsoapysdr-dev, libcsdr-dev (>= 0.18)
+Vcs-Browser: https://github.com/jketterl/owrx_connector
+Vcs-Git: https://github.com/jketterl/owrx_connector.git
+
+Package: libowrx-connector
+Architecture: any
+Depends: libcsdr0 (>= 0.18), ${shlibs:Depends}, ${misc:Depends}
+Description: OpenWebRX connector base library
+ Base library used to provide basic connector functionality
+
+Package: libowrx-connector-dev
+Architecture: any
+Depends: libowrx-connector (=${binary:Version}), libcsdr-dev (>= 0.18), ${shlibs:Depends}, ${misc:Depends}
+Description: OpenWebRX connector base library - development files
+ Provides includes and development files to build custom connectors
+
+Package: rtl-connector
+Architecture: any
+Depends: libowrx-connector (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Conflicts: owrx-connector (<< 0.4)
+Description: OpenWebRX connector for RTL-SDR devices
+ Provides connector functionality for RTL-SDR based devices
+
+Package: soapy-connector
+Architecture: any
+Depends: libowrx-connector (=${binary:Version}), soapysdr-module-sdrplay3 (>= 0.7), soapysdr-module-rtlsdr (>=0.7), ${shlibs:Depends}, ${misc:Depends}
+Conflicts: owrx-connector (<< 0.4)
+Description: OpenWebRX connector for SoapySDR devices
+ Provides connector functionality for devices supported by the SoapySDR library
+
+Package: rtl-tcp-connector
+Architecture: any
+Depends: libowrx-connector (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Conflicts: owrx-connector (<< 0.4)
+Description: OpenWebRX connector for rtl_tcp remote devices
+ Provides connector functionality for (potentially) remote SDR devices that are
+ available on the network using the rtl_tcp protocol.
+
+Package: owrx-connector
+Architecture: any
+Depends: rtl-connector (=${binary:Version}), rtl-tcp-connector (=${binary:Version}), soapy-connector (=${binary:Version}), ${misc:Depends}
+Description: Virtual bundle dependency package
+ This package installs the base connectors for RTL-SDR, SoapySDR and rtl_tcp
