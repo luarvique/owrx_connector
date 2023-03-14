@@ -1,3 +1,9 @@
+owrx-connector (0.6.3) bullseye jammy; urgency=low
+
+  * Updating for the new SoapySDRPlay3 package.
+
+ -- Marat Fayzullin <luarvique@gmail.com>  Tue, 14 Mar 2023 15:15:00 +0000
+
 owrx-connector (0.6.2) bullseye jammy; urgency=low
 
   * Now restarting Soapy stream if it times out.
