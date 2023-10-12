@@ -1,3 +1,9 @@
+owrx-connector (0.6.4) bullseye jammy; urgency=low
+
+  * Updating for the new CSDR package.
+
+ -- Marat Fayzullin <luarvique@gmail.com>  Thu, 12 Oct 2023 15:15:00 +0000
+
 owrx-connector (0.6.3) bullseye jammy; urgency=low
 
   * Updating for the new SoapySDRPlay3 package.
