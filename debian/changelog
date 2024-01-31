@@ -1,3 +1,11 @@
+owrx-connector (0.6.5) bullseye jammy; urgency=low
+
+  * Merged changes from Jakob Ketterl's development branch.
+  * [jketterl] Fixes to RTL and RTL-TCP connectors.
+  * [jketterl] Improvements to Soapy connector.
+
+ -- Marat Fayzullin <luarvique@gmail.com>  Mon, 5 Feb 2024 15:15:00 +0000
+
 owrx-connector (0.6.4) bullseye jammy; urgency=low
 
   * Updating for the new CSDR package.
