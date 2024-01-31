@@ -4,7 +4,8 @@
 #include <algorithm>
 #include <getopt.h>
 #include <vector>
-#include <time.h>
+#include <SoapySDR/Modules.hpp>
+#include <SoapySDR/Registry.hpp>
 
 int main (int argc, char** argv) {
     Connector* connector = new SoapyConnector();
@@ -19,7 +20,9 @@ std::stringstream SoapyConnector::get_usage_string() {
     std::stringstream s = Connector::get_usage_string();
     s <<
         " -a, --antenna           select antenna input\n" <<
-        " -t, --settings          set sdr specific settings\n";
+        " -t, --settings          set sdr specific settings\n" <<
+        " -n, --channel           select soapy channel (default 0)\n" <<
+        " -l, --listdrivers       list installed SoapySDR drivers\n";
     return s;
 }
 
@@ -27,6 +30,8 @@ std::vector<struct option> SoapyConnector::getopt_long_options() {
     std::vector<struct option> long_options = Connector::getopt_long_options();
     long_options.push_back({"antenna", required_argument, NULL, 'a'});
     long_options.push_back({"settings", required_argument, NULL, 't'});
+    long_options.push_back({"channel", required_argument, NULL, 'n'});
+    long_options.push_back({"listdrivers", no_argument, NULL, 'l'});
     return long_options;
 }
 
@@ -38,6 +43,12 @@ int SoapyConnector::receive_option(int c, char* optarg) {
         case 't':
             settings = std::string(optarg);
             break;
+        case 'n':
+            channel = (size_t) std::strtoul(optarg, NULL, 10);
+            break;
+        case 'l':
+            listDrivers();
+            return 1;
         default:
             return Connector::receive_option(c, optarg);
     }
@@ -45,16 +56,29 @@ int SoapyConnector::receive_option(int c, char* optarg) {
 }
 
 void SoapyConnector::print_version() {
-    std::cout << "soapy_connector version " << VERSION << "\n";
+    std::cout << "soapy_connector version " << VERSION << std::endl;
     Connector::print_version();
+}
+
+void SoapyConnector::listDrivers() {
+    // populate the registry
+    for (const auto &mod : SoapySDR::listModules()) {
+        SoapySDR::loadModule(mod);
+    }
+
+    // then print drivers, one per line
+    for (const auto &it : SoapySDR::Registry::listFindFunctions()) {
+        std::cout << it.first << std::endl;
+    }
 }
 
 int SoapyConnector::open() {
     try {
+        std::lock_guard<std::mutex> lck(devMutex);
         dev = SoapySDR::Device::make(device_id == nullptr ? "" : std::string(device_id));
         return 0;
     } catch (const std::exception& e) {
-        std::cerr << e.what() << "\n";
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 };
@@ -64,7 +88,7 @@ int SoapyConnector::setup() {
     if (antenna != "") {
         r = setAntenna(antenna);
         if (r != 0) {
-            std::cerr << "Setting antenna failed\n";
+            std::cerr << "Setting antenna failed" << std::endl;
             return 1;
         }
     }
@@ -75,7 +99,7 @@ int SoapyConnector::setup() {
     if (settings != "") {
         r = setSettings(settings);
         if (r != 0) {
-            std::cerr << "Setting settings failed\n";
+            std::cerr << "Setting settings failed" << std::endl;
             return 1;
         }
     }
@@ -85,15 +109,19 @@ int SoapyConnector::setup() {
 
 int SoapyConnector::setAntenna(std::string antenna) {
     try {
+        std::lock_guard<std::mutex> lck(devMutex);
+        if (dev == nullptr) return 0;
         dev->setAntenna(SOAPY_SDR_RX, channel, antenna);
         return 0;
     } catch (const std::exception& e) {
-        std::cerr << e.what() << "\n";
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 }
 
 int SoapyConnector::setSettings(std::string settings) {
+    std::lock_guard<std::mutex> lck(devMutex);
+    if (dev == nullptr) return 0;
     SoapySDR::Kwargs args = Connector::parseSettings(settings);
     for (const auto &p : args) {
         std::string key = p.first;
@@ -101,7 +129,7 @@ int SoapyConnector::setSettings(std::string settings) {
         try {
             dev->writeSetting(key, value);
         } catch (const std::exception& e) {
-            std::cerr << "WARNING: setting key " << key << "failed: " << e.what() << "\n";
+            std::cerr << "WARNING: setting key " << key << "failed: " << e.what() << std::endl;
         }
     }
     return 0;
@@ -184,31 +212,38 @@ int SoapyConnector::read() {
 
 int SoapyConnector::close() {
     try {
-        SoapySDR::Device::unmake(dev);
+        std::lock_guard<std::mutex> lck(devMutex);
+        if (dev == nullptr) return 0;
+        auto old = dev;
         dev = nullptr;
+        SoapySDR::Device::unmake(old);
         return 0;
     } catch (const std::exception& e) {
-        std::cerr << e.what() << "\n";
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 };
 
 int SoapyConnector::set_center_frequency(double frequency) {
     try {
+        std::lock_guard<std::mutex> lck(devMutex);
+        if (dev == nullptr) return 0;
         dev->setFrequency(SOAPY_SDR_RX, channel, frequency);
         return 0;
     } catch (const std::exception& e) {
-        std::cerr << e.what() << "\n";
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 };
 
 int SoapyConnector::set_sample_rate(double sample_rate) {
     try {
+        std::lock_guard<std::mutex> lck(devMutex);
+        if (dev == nullptr) return 0;
         dev->setSampleRate(SOAPY_SDR_RX, channel, sample_rate);
         return 0;
     } catch (const std::exception& e) {
-        std::cerr << e.what() << "\n";
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 };
@@ -221,23 +256,27 @@ void SoapyConnector::applyChange(std::string key, std::string value) {
     } else if (key == "settings") {
         settings = value;
         r = setSettings(settings);
+    } else if (key == "channel") {
+        new_channel = std::stoul(value, nullptr, 10);
     } else {
         Connector::applyChange(key, value);
         return;
     }
     if (r != 0) {
-        std::cerr << "WARNING: setting \"" << key << "\" failed: " << r << "\n";
+        std::cerr << "WARNING: setting \"" << key << "\" failed: " << r << std::endl;
     }
 }
 
 int SoapyConnector::set_gain(GainSpec* gain) {
+    std::lock_guard<std::mutex> lck(devMutex);
+    if (dev == nullptr) return 0;
     SimpleGainSpec* simple_gain;
     MultiGainSpec* multi_gain;
     if (dynamic_cast<AutoGainSpec*>(gain) != nullptr) {
         try {
             dev->setGainMode(SOAPY_SDR_RX, channel, true);
         } catch (const std::exception& e) {
-            std::cerr << e.what() << "\n";
+            std::cerr << e.what() << std::endl;
             return 1;
         }
     } else if ((simple_gain = dynamic_cast<SimpleGainSpec*>(gain)) != nullptr) {
@@ -245,7 +284,7 @@ int SoapyConnector::set_gain(GainSpec* gain) {
             dev->setGainMode(SOAPY_SDR_RX, channel, false);
             dev->setGain(SOAPY_SDR_RX, channel, simple_gain->getValue());
         } catch (const std::exception& e) {
-            std::cerr << e.what() << "\n";
+            std::cerr << e.what() << std::endl;
             return 1;
         }
     } else if ((multi_gain = dynamic_cast<MultiGainSpec*>(gain)) != nullptr) {
@@ -256,11 +295,11 @@ int SoapyConnector::set_gain(GainSpec* gain) {
                 dev->setGain(SOAPY_SDR_RX, channel, p.first, std::stod(p.second));
             }
         } catch (const std::exception& e) {
-            std::cerr << e.what() << "\n";
+            std::cerr << e.what() << std::endl;
             return 1;
         }
     } else {
-        std::cerr << "unsupported gain settings\n";
+        std::cerr << "unsupported gain settings" << std::endl;
         return 100;
     }
 
@@ -268,6 +307,8 @@ int SoapyConnector::set_gain(GainSpec* gain) {
 };
 
 int SoapyConnector::set_ppm(double ppm) {
+    std::lock_guard<std::mutex> lck(devMutex);
+    if (dev == nullptr) return 0;
     try {
 #if defined(SOAPY_SDR_API_VERSION) && (SOAPY_SDR_API_VERSION >= 0x00060000)
         dev->setFrequencyCorrection(SOAPY_SDR_RX, channel, ppm);
@@ -276,7 +317,7 @@ int SoapyConnector::set_ppm(double ppm) {
 #endif
         return 0;
     } catch (const std::exception& e) {
-        std::cerr << e.what() << "\n";
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 };

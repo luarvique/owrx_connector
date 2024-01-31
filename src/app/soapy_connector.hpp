@@ -29,6 +29,7 @@ class SoapyConnector: public Connector {
         uint32_t soapy_buffer_size = SOAPY_BUFFER_SIZE;
         SoapySDR::Device* dev = nullptr;
         size_t channel = 0;
+        size_t new_channel = 0;
         std::string antenna = "";
         std::string settings = "";
 
@@ -37,4 +38,5 @@ class SoapyConnector: public Connector {
         int receive_option(int c, char* optarg) override;
         int setAntenna(std::string antenna);
         int setSettings(std::string settings);
+        static void listDrivers();
 };
