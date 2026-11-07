@@ -164,7 +164,6 @@ int SoapyConnector::read() {
             return 9;
         }
 
-        SoapySDR::Stream* stream;
         try {
             stream = dev->setupStream(SOAPY_SDR_RX, format, std::vector<size_t>{channel});
         } catch (const std::exception& e) {
@@ -224,6 +223,10 @@ int SoapyConnector::close() {
         if (dev == nullptr) return 0;
         auto old = dev;
         dev = nullptr;
+        if (stream != nullptr) {
+            old->closeStream(stream);
+            stream = nullptr;
+        }
         SoapySDR::Device::unmake(old);
         return 0;
     } catch (const std::exception& e) {
